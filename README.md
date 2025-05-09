@@ -2,6 +2,8 @@
 
 Playing with primal graphs via vibe coding
 
+p.s. Swapped )] Markdown link notation to expose links in text. 
+
 ## Start with a CNF
 
 I generate a CNF using CBMC, for example:
