@@ -73,7 +73,7 @@ A [talk by Maria Chudnovsky](https://youtu.be/cF7fJT7iFnM?si=tyiq0foWp1pt1CKb&t=
 
 Discusses algorithmic [applications of tree decompositions](https://www.youtube.com/watch?v=AW3MVauVrik), including dynamic programming on graphs-a strategy often used in SAT solvers for structured instances.
 
-## Background on Junciton Tree Algorithm
+## Background on Junction Tree Algorithm
 
 Tree decompositions (also called [junction trees](https://youtu.be/d8tKC5vxVv8?si=HhN_iJO72-0SfaHW) or clique trees) for graphical models. How to construct a tree decomposition from a graph (which, in the context of SAT, is often the primal graph).
 
