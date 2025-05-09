@@ -67,7 +67,7 @@ Introduces (tree decompositions and treewidth)[https://www.youtube.com/watch?v=g
 
 ## Induced Subgraphs and Tree Decompositions
 
-A (talk by Maria Chudnovsky)[https://www.youtube.com/watch?v=cF7fJT7iFnM] (Princeton University) at IWOCA 2021, exploring structural graph theory techniques applicable to SAT instances . It emphasizes how decompositions simplify solving combinatorial problems by leveraging sparsity.
+A (talk by Maria Chudnovsky)[https://youtu.be/cF7fJT7iFnM?si=tyiq0foWp1pt1CKb&t=717] (Princeton University) at IWOCA 2021, exploring structural graph theory techniques applicable to SAT instances . It emphasizes how decompositions simplify solving combinatorial problems by leveraging sparsity.
 
 ## Daniel Lokshtanov: Tree Decompositions and Graph Algorithms
 
