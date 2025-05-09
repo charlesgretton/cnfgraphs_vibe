@@ -7,7 +7,7 @@ Playing with primal graphs via vibe coding
 I generate a CNF using CBMC, for example:
 
 ```bash
-cbmc target.c --dimacs --outfile target.cnf
+cbmc target.c --dimacs --outfile target.cnf --type primal
 ```
 
 ## Turn CNF into Constraint Graph
@@ -57,3 +57,22 @@ python3 visualise_buckets.py target.td -o target.svg
 python3 visualise_td.py target.td -o target.svg
 ```
  
+# Resources
+
+In addition to textbooks on AI and Constraints Processing, the below exists.
+
+## Graph Theory 6-3: Tree Decompositions and Tree Width 
+ 
+Introduces (tree decompositions and treewidth)[https://www.youtube.com/watch?v=gCZrasaG0vA], foundational concepts for analyzing graph structure and solving NP-hard problems efficiently. While not SAT-specific, it provides the theoretical basis for applications in constraint satisfaction problems like SAT.
+
+## Induced Subgraphs and Tree Decompositions
+
+A (talk by Maria Chudnovsky)[https://www.youtube.com/watch?v=cF7fJT7iFnM] (Princeton University) at IWOCA 2021, exploring structural graph theory techniques applicable to SAT instances . It emphasizes how decompositions simplify solving combinatorial problems by leveraging sparsity.
+
+## Daniel Lokshtanov: Tree Decompositions and Graph Algorithms
+
+Discusses algorithmic [applications of tree decompositions](https://www.youtube.com/watch?v=AW3MVauVrik), including dynamic programming on graphs-a strategy often used in SAT solvers for structured instances.
+
+## Connection to SAT Primal Graphs
+
+You can access the paper directly (here)[https://pageperso.lis-lab.fr/cyril.terrioux/en/publis/ictai2009a.pdf]
