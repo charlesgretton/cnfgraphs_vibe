@@ -48,7 +48,7 @@ python3 verify_td.py target.gr target.td
 *Warning*, will create mathplotlib widget.
 
 ```bash
-python3 visualise_buckets.py target.td -o target.svg
+python3 visualise_bags.py target.td -o target.svg
 ```
 
 ### Without Bags
