@@ -18,7 +18,7 @@ python3 cnf_to_graph.py ./target.cnf ./target.gr
 
 ## Use HTD to Generate a Tree Decomposition
 
-An example HTD code and repository is (here)[https://github.com/mabseher/htd]
+An example HTD code and repository is [here](https://github.com/mabseher/htd)
 
 ### Build
 
