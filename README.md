@@ -63,7 +63,7 @@ In addition to textbooks on AI and Constraints Processing, the below exists.
 
 ## Graph Theory 6-3: Tree Decompositions and Tree Width 
  
-Introduces (tree decompositions and [treewidth](https://www.youtube.com/watch?v=gCZrasaG0vA), foundational concepts for analyzing graph structure and solving NP-hard problems efficiently. While not SAT-specific, it provides the theoretical basis for applications in constraint satisfaction problems like SAT.
+Introduces tree decompositions and [treewidth](https://www.youtube.com/watch?v=gCZrasaG0vA), foundational concepts for analyzing graph structure and solving NP-hard problems efficiently. While not SAT-specific, it provides the theoretical basis for applications in constraint satisfaction problems like SAT.
 
 ## Induced Subgraphs and Tree Decompositions
 
