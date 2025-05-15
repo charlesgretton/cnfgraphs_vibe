@@ -56,7 +56,23 @@ python3 visualise_bags.py target.td -o target.svg
 ```bash
 python3 visualise_td.py target.td -o target.svg
 ```
- 
+
+# DAG input for Dagster
+
+The following is not yet robust to tree decompositions where nodes can be empty and vacuous. 
+
+## DAG from a Root to the Leaves
+
+```bash
+python3 td2dag.py chain1.cnf chain1.td   2> /dev/null
+```
+
+## DAG from the Leaves to a Root
+
+```bash
+python3 td2dag.py --toroot ../chain1.cnf ../chain1.td   2> /dev/null
+```
+
 # Resources
 
 In addition to textbooks on AI and Constraints Processing, the below exists.
@@ -76,7 +92,6 @@ Discusses algorithmic [applications of tree decompositions](https://www.youtube.
 ## Background on Junction Tree Algorithm
 
 Tree decompositions (also called [junction trees](https://youtu.be/d8tKC5vxVv8?si=HhN_iJO72-0SfaHW) or clique trees) for graphical models. How to construct a tree decomposition from a graph (which, in the context of SAT, is often the primal graph).
-
 
 ## Connection to SAT Primal Graphs
 
