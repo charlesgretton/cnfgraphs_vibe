@@ -61,8 +61,16 @@ python3 visualise_td.py target.td -o target.svg
 
 The following is not yet robust to tree decompositions where nodes can be empty and vacuous. 
 
+## DAG from a Root to the Leaves
+
 ```bash
 python3 td2dag.py chain1.cnf chain1.td   2> /dev/null
+```
+
+## DAG from the Leaves to a Root
+
+```bash
+python3 td2dag.py --toroot ../chain1.cnf ../chain1.td   2> /dev/null
 ```
 
 # Resources
