@@ -201,7 +201,7 @@ def print_edge_map_with_source_clause_variables(input_edge_map, map_name="Edge M
         # Format the set of variables into a sorted, comma-separated string
         vars_str = ",".join(map(str, sorted(list(variables_in_source_clauses))))
         
-        print(f"{source_bag_id}->{destination_bag_id}:{vars_str}")
+        print(f"{source_bag_id-1}->{destination_bag_id-1}:{vars_str}")
 
 
 def print_clauses_for_each_bag():
@@ -232,7 +232,7 @@ def print_clauses_for_each_bag():
         # If not, you could sort here: sorted(clause_indices_for_this_bag)
         clause_indices_str = ",".join(map(str, clause_indices_for_this_bag))
         
-        print(f"{bag_id}:{clause_indices_str}")
+        print(f"{bag_id-1}:{clause_indices_str}")
 
     if not sorted_bag_ids: # Second check if td_bags became empty after sorting (shouldn't happen)
         logging.info("No bag IDs found to process.")
