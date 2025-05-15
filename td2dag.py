@@ -1,11 +1,12 @@
-## Author -- Gemini 2.5 Pro Preview 05-06
-## With extensions, corrections and logging changes by Charles Gretton - May 15, 2025 
+## Authors -- Gemini 2.5 Pro Preview 05-06
+##         -- details, corrections and logging changes by Charles Gretton - May 15, 2025 
 
 import argparse
 import os
 from collections import defaultdict
 import networkx as nx
 import logging
+from collections import defaultdict, deque # <--- Make sure deque is imported here
 
 logging.basicConfig(level=logging.DEBUG, format='%(levelname)s: %(message)s')
 
@@ -150,7 +151,7 @@ edges__from_leaf_to_root = {}
 edges__from_root_to_leaves = {}
 bag_to_clause_indices = defaultdict(list) # I depart from Habet et al., and allow a clause to appear in multiple tree nodes (i.e., I do not exclude 'parent' clauses)
 
-clauses = []
+cnf_clauses = []
 num_vars = 0
 td_bags = {} 
 td_edges = []
@@ -202,6 +203,151 @@ def print_edge_map_with_source_clause_variables(input_edge_map, map_name="Edge M
         vars_str = ",".join(map(str, sorted(list(variables_in_source_clauses))))
         
         print(f"{source_bag_id-1}->{destination_bag_id-1}:{vars_str}")
+
+
+
+def print_edge_map_with_cumulative_variables(input_edge_map, map_name="Edge Map with Cumulative Variables", roots=None):
+    """
+    Prints edges from an input_edge_map. For each edge A->B,
+    the variables printed are the cumulative variables from A and all its
+    ancestors on the current path from a root.
+
+    Args:
+        input_edge_map (dict): A dictionary where keys are source bag IDs
+                               and values are lists of destination bag IDs
+                               (or a single ID if each source has one successor).
+                               Example: {1: [2, 3], 2: [4]} or {1:2, 2:4}
+        map_name (str): A descriptive name for the map.
+        roots (list, optional): A list of starting node IDs. If None,
+                                 nodes that are sources but not destinations
+                                 in input_edge_map will be considered roots.
+    """
+    global bag_to_clause_indices
+    global clauses_with_vars
+
+    logging.info(f"\n--- {map_name} ---")
+
+    if not input_edge_map:
+        logging.warning(f"The provided '{map_name}' is empty. Nothing to print.")
+        return
+
+    # For clarity and flexibility, let's ensure the input_edge_map values are lists
+    # This handles both source:dest and source:[dest1, dest2]
+    adj = defaultdict(list)
+    all_nodes_in_map = set()
+    for s, d_val in input_edge_map.items():
+        all_nodes_in_map.add(s)
+        if isinstance(d_val, list):
+            adj[s].extend(d_val)
+            all_nodes_in_map.update(d_val)
+        else: # Assuming d_val is a single destination
+            adj[s].append(d_val)
+            all_nodes_in_map.add(d_val)
+    
+    if not adj and all_nodes_in_map: # Only nodes, no edges in map
+        logging.warning(f"The provided '{map_name}' contains nodes but no traversable edges. Printing node variables only.")
+        for node_id in sorted(list(all_nodes_in_map)):
+            current_node_vars = set()
+            if node_id in bag_to_clause_indices:
+                for clause_id in bag_to_clause_indices[node_id]:
+                    if 0 <= clause_id < len(clauses_with_vars):
+                        current_node_vars.update(clauses_with_vars[clause_id]['vars'])
+            vars_str = ",".join(map(str, sorted(list(current_node_vars))))
+            # Adjusting print format since there's no "edge"
+            print(f"Node {node_id-1} (variables: {vars_str})")
+        return
+    elif not adj:
+        logging.warning(f"The provided '{map_name}' is effectively empty. Nothing to print.")
+        return
+
+
+    # Determine roots if not provided
+    if roots is None:
+        sources = set(adj.keys())
+        destinations = set()
+        for dest_list in adj.values():
+            destinations.update(dest_list)
+        roots = list(sources - destinations)
+        if not roots and adj: # Possible cycle or all nodes are destinations
+            # Fallback: pick the numerically smallest source node as a pseudo-root if any edge exists
+            if sources:
+                roots = [min(sources)]
+                logging.warning(f"No clear roots found (e.g., cycles might exist). Starting traversal from node {roots[0]}.")
+            else: # adj is empty
+                 logging.warning(f"The provided '{map_name}' has no edges. Nothing to print.")
+                 return
+
+
+    if not roots:
+        logging.warning(f"No root nodes identified or provided for '{map_name}'. Cannot perform traversal.")
+        return
+
+    logging.info(f"Starting traversal from root(s): {roots}")
+    
+    # Keep track of printed edges to avoid re-printing in case of DAGs (not just trees)
+    # or multiple paths leading to the same information accumulation.
+    # The key is (source, dest), value is the set of cumulative vars printed for it.
+    printed_cumulative_edges = {}
+
+    for root_node_id in roots:
+        # Queue for BFS-like traversal: (current_node_id, accumulated_variables_set_from_ancestors)
+        queue = deque([(root_node_id, set())])
+        # Visited set for current traversal from THIS root to handle cycles within its reach
+        # Stores (node, frozenset(accumulated_vars)) to distinguish paths if vars differ
+        visited_in_bfs = set() 
+
+        while queue:
+            current_node, inherited_vars = queue.popleft()
+
+            # Check if we've visited this node via the exact same accumulated variable set path
+            # This helps break cycles or redundant paths if the accumulation state is the same.
+            current_state = (current_node, frozenset(inherited_vars))
+            if current_state in visited_in_bfs:
+                continue
+            visited_in_bfs.add(current_state)
+
+            # Get variables from clauses directly associated with the current_node
+            current_node_clause_vars = set()
+            if current_node in bag_to_clause_indices:
+                for clause_id in bag_to_clause_indices[current_node]:
+                    if 0 <= clause_id < len(clauses_with_vars):
+                        current_node_clause_vars.update(clauses_with_vars[clause_id]['vars'])
+                    else:
+                        logging.warning(f"Clause ID {clause_id} (from bag {current_node}) out of range.")
+            
+            # The new cumulative set of variables for this node and its children
+            vars_for_current_and_children = inherited_vars.union(current_node_clause_vars)
+
+            # Process outgoing edges from current_node
+            if current_node in adj:
+                for neighbor_node in adj[current_node]:
+                    edge = (current_node, neighbor_node)
+                    
+                    # The variables to print for THIS edge are those accumulated *up to and including* the source (current_node)
+                    cumulative_vars_for_this_edge_print = vars_for_current_and_children 
+                                                       # or inherited_vars.union(current_node_clause_vars)
+
+                    # Check if we've already printed this edge with this exact (or a superset of) cumulative variable set
+                    # This is tricky. For simplicity, if an edge is printed once, we might not print it again,
+                    # or we print it if the cumulative set is different/larger.
+                    # Let's print if the edge itself is new in the context of `printed_cumulative_edges`.
+                    # If an edge (A,B) is printed, the vars are those of A and its ancestors.
+                    
+                    # If you want to ensure an edge is printed only ONCE globally, irrespective of path:
+                    if edge not in printed_cumulative_edges:
+                        vars_str = ",".join(map(str, sorted(list(cumulative_vars_for_this_edge_print))))
+                        print(f"{current_node-1}->{neighbor_node-1}:{vars_str}") # Assuming 0-indexed print
+                        printed_cumulative_edges[edge] = cumulative_vars_for_this_edge_print
+                    # Else: If you want to print if the cumulative set is NEW for this edge (more complex output):
+                    # elif printed_cumulative_edges.get(edge) != cumulative_vars_for_this_edge_print:
+                    #     vars_str = ",".join(map(str, sorted(list(cumulative_vars_for_this_edge_print))))
+                    #     print(f"{current_node-1}->{neighbor_node-1}:{vars_str} (Updated set)")
+                    #     printed_cumulative_edges[edge] = cumulative_vars_for_this_edge_print
+
+
+                    # Add neighbor to queue with the updated cumulative variables
+                    # The variables inherited by the neighbor are those accumulated up to current_node
+                    queue.append((neighbor_node, vars_for_current_and_children))
 
 
 def print_clauses_for_each_bag():
@@ -282,6 +428,9 @@ def compute__root_paths_to_leaves():
                     
                     # If sticking to source:destination (overwrites if source has multiple children on different paths)
                     edges__from_root_to_leaves[current_source] = current_destination
+
+                    if len(path) - 1 == i+1:
+                        edges__from_root_to_leaves[current_destination] = len(td_bags) + 1
                     
         except nx.NetworkXNoPath:
             # This should ideally not happen if leaves are reachable from root in a tree
@@ -404,7 +553,7 @@ def parse_decomposition(td_filepath):
 
     
 def parse_problem(cnf_filepath):
-    global clauses
+    global cnf_clauses
     global num_vars
     global clauses_with_vars
     
@@ -449,6 +598,7 @@ def compute__bags_to_clauses():
         bag_to_clause_indices[bag_id].sort()        
 
 def main():
+    global clauses
     parser = argparse.ArgumentParser(
         description="Analyze a Tree Decomposition against a CNF file. "
                     "Associates CNF clauses with TD bags and prints paths from leaves to a root."
@@ -460,6 +610,9 @@ def main():
         help="Optional: Specify the ID of the TD bag to be considered the 'trunk' or root. "
              "If not provided, the bag with the smallest ID will be chosen."
     )
+    
+    parser.add_argument('--toroot', action='store_true', help='Traverse from root to leaves')
+
     args = parser.parse_args()
 
     if not os.path.exists(args.cnf_file):
@@ -478,15 +631,28 @@ def main():
     compute__root_paths_to_leaves()
 
 
-    print("DAG-FILE")
-    print(f"NODES:{len(td_bags)}")
-    print("GRAPH:")
-    #print_edge_map_with_source_clause_variables(edges__from_leaf_to_root)
-    print_edge_map_with_source_clause_variables(edges__from_root_to_leaves)
-    print("CLAUSES:")
-    print_clauses_for_each_bag()
-    print("REPORTING:")
-    print(f"1-{num_vars}")
+    if args.toroot:        
+        print("DAG-FILE")
+        print(f"NODES:{len(td_bags)}")
+        print("GRAPH:")
+        #print_edge_map_with_source_clause_variables(edges__from_leaf_to_root)
+        print_edge_map_with_cumulative_variables(edges__from_leaf_to_root)
+        print("CLAUSES:")
+        print_clauses_for_each_bag()
+        print("REPORTING:")
+        print(f"1-{num_vars}")
+    else:
+        print("DAG-FILE")
+        print(f"NODES:{len(td_bags)+1}")
+        print("GRAPH:")
+        #print_edge_map_with_source_clause_variables(edges__from_root_to_leaves)
+        print_edge_map_with_cumulative_variables(edges__from_root_to_leaves)
+        print("CLAUSES:")
+        print_clauses_for_each_bag()
+        print(f"{len(td_bags)}:0-{len(cnf_clauses)-1}")
+        print("REPORTING:")
+        print(f"1-{num_vars}")
+    
     
 if __name__ == "__main__":
     main()
