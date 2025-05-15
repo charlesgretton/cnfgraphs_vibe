@@ -147,7 +147,7 @@ def parse_td_file(td_filepath):
 
 
 edges__from_leaf_to_root = {}
-edges__from_root_to_leafs = {}
+edges__from_root_to_leaves = {}
 bag_to_clause_indices = defaultdict(list) # I depart from Habet et al., and allow a clause to appear in multiple tree nodes (i.e., I do not exclude 'parent' clauses)
 
 clauses = []
@@ -239,7 +239,7 @@ def print_clauses_for_each_bag():
 
 
 def compute__root_paths_to_leaves():
-    global td_bags, td_edges, root_node, td_graph, td_leaves, edges__from_root_to_leafs
+    global td_bags, td_edges, root_node, td_graph, td_leaves, edges__from_root_to_leaves
     
     # Ensure necessary globals are initialized
     if td_leaves is None or root_node is None or not td_graph.nodes():
@@ -247,14 +247,14 @@ def compute__root_paths_to_leaves():
         return
 
     # Clear the dictionary before populating, in case this function is called multiple times
-    edges__from_root_to_leafs.clear()
+    edges__from_root_to_leaves.clear()
     
     path_count = 0
     logging.info(f"\nComputing paths from root {root_node} to leaves: {td_leaves}")
 
     for leaf in td_leaves:
         if leaf == root_node and len(td_graph.nodes()) == 1: # Path from root to itself if it's the only node
-            # No edges to add in this case for edges__from_root_to_leafs
+            # No edges to add in this case for edges__from_root_to_leaves
             logging.info(f"  Path from root {root_node} to leaf {leaf} (is the same node).")
             path_count +=1
             continue
@@ -275,13 +275,13 @@ def compute__root_paths_to_leaves():
                     current_destination = path[i+1]
                     
                     # If you want to store multiple children for a source:
-                    # if current_source not in edges__from_root_to_leafs:
-                    #     edges__from_root_to_leafs[current_source] = []
-                    # if current_destination not in edges__from_root_to_leafs[current_source]:
-                    #     edges__from_root_to_leafs[current_source].append(current_destination)
+                    # if current_source not in edges__from_root_to_leaves:
+                    #     edges__from_root_to_leaves[current_source] = []
+                    # if current_destination not in edges__from_root_to_leaves[current_source]:
+                    #     edges__from_root_to_leaves[current_source].append(current_destination)
                     
                     # If sticking to source:destination (overwrites if source has multiple children on different paths)
-                    edges__from_root_to_leafs[current_source] = current_destination
+                    edges__from_root_to_leaves[current_source] = current_destination
                     
         except nx.NetworkXNoPath:
             # This should ideally not happen if leaves are reachable from root in a tree
@@ -289,7 +289,7 @@ def compute__root_paths_to_leaves():
         except nx.NodeNotFound:
             logging.error(f"  Error: Node {root_node} or {leaf} not found in graph during path search.")
             
-    # print(f"Processed {path_count} paths from root. Populated edges__from_root_to_leafs.")
+    # print(f"Processed {path_count} paths from root. Populated edges__from_root_to_leaves.")
 
 
     
@@ -481,7 +481,8 @@ def main():
     print("DAG-FILE")
     print(f"NODES:{len(td_bags)}")
     print("GRAPH:")
-    print_edge_map_with_source_clause_variables(edges__from_leaf_to_root)
+    #print_edge_map_with_source_clause_variables(edges__from_leaf_to_root)
+    print_edge_map_with_source_clause_variables(edges__from_root_to_leaves)
     print("CLAUSES:")
     print_clauses_for_each_bag()
     print("REPORTING:")
