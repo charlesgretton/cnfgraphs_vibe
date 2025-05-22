@@ -7,13 +7,13 @@ Playing with primal graphs via vibe coding
 I generate a CNF using CBMC, for example:
 
 ```bash
-cbmc target.c --dimacs --outfile target.cnf --type primal
+cbmc target.c --dimacs --outfile target.cnf
 ```
 
 ## Turn CNF into Constraint Graph
 
 ```bash
-python3 cnf_to_graph.py ./target.cnf ./target.gr
+python3 cnf_to_graph.py ./target.cnf ./target.gr --type primal
 ```
 
 ## Use HTD to Generate a Tree Decomposition
