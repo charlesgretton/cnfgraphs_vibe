@@ -43,7 +43,7 @@ int main() {
       numbers[index+1] = numbers[index];
       index++;
     }
-    __CPROVER_assert(numbers[0] == numbers[N-1], "Reachable Safety property 1.");
+    __CPROVER_assert(numbers[0] == numbers[N-1], "Unreachable Safety property 1.");
   }
 
 
