@@ -94,7 +94,7 @@ python3 td2dag.py x.cnf x.1c.nempt.td   2> /dev/null > x.dag
 On a small host, you could test with the following invocation.
 
 ```bash
-mpirun -n 3 ./dagster -m 0 x.dag x.plus1.cnf
+mpirun --oversubscribe -n 100 ./dagster -m 0 -b 0 -e 0  x.dag x.plus1.cnf
 ```
 
 # Resources
