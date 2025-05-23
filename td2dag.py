@@ -308,8 +308,9 @@ def format_aggregated_integers_to_ranges(data_dict):
     return ",".join(ranges)
 
 variables_cumulation = {} # This will store bag_id -> set of cumulative variables
+already_printed=set()
 
-def print_edge_map_with_cumulative_variables(input_edge_map, current_nodes):
+def print_edge_map_with_cumulative_variables(input_edge_map, current_nodes,doprint=True):
     """
     Recursively processes nodes in a tree-like structure (defined by input_edge_map)
     to compute cumulative variables for each node.
@@ -328,7 +329,8 @@ def print_edge_map_with_cumulative_variables(input_edge_map, current_nodes):
     global variables_cumulation
     global bag_to_clause_indices # Needs to be accessible
     global clauses_with_vars   # Needs to be accessible
-
+    global already_printed
+    
     if not current_nodes: # Base case for recursion
         return
 
@@ -373,8 +375,11 @@ def print_edge_map_with_cumulative_variables(input_edge_map, current_nodes):
                     variables_cumulation[dest_node_id] = set()
 
                 to_print=format_aggregated_integers_to_ranges(variables_cumulation)
-                    
-                print(f"{node_id-1}->{dest_node_id-1}:{to_print}")
+
+                if doprint:
+                    if (node_id-1,dest_node_id-1) not in already_printed:
+                        print(f"{node_id-1}->{dest_node_id-1}:{to_print}")
+                        already_printed.add( (node_id-1,dest_node_id-1) );
                     
                 # Crucially, the cumulative variables from the parent (node_id)
                 # are added to the child (dest_node_id)
@@ -816,30 +821,31 @@ def main():
     compute__root_paths_to_leaves()
 
 
-    # if args.toroot:        
-    #     print("DAG-FILE")
-    #     print(f"NODES:{len(td_bags)}")
-    #     print("GRAPH:")
-    #     #print_edge_map_with_source_clause_variables(edges__from_leaf_to_root)
-    #     print_edge_map_with_cumulative_variables(edges__from_leaf_to_root,"thing",[12])
-    #     print("CLAUSES:")
-    #     print_clauses_for_each_bag()
-    #     print("REPORTING:")
-    #     print(f"1-{num_vars}")
-    # else:
-    print("DAG-FILE")
-    print(f"NODES:{len(td_bags)+1}")
-    print("GRAPH:")
-    #print_edge_map_with_source_clause_variables(edges__from_root_to_leaves)
-    logging.info(f"{edges__from_root_to_leaves}")
-    logging.info(f"Root node is: {root_node}")
-    print_edge_map_with_cumulative_variables(edges__from_root_to_leaves,[root_node])
-    print("CLAUSES:")
-    print_clauses_for_each_bag()
-    print(f"{len(td_bags)}:0-{len(cnf_clauses)-1}")
-    print("REPORTING:")
-    print(f"1-{num_vars}")
-    
+    if args.toroot:
+        print("DAG-FILE")
+        print(f"NODES:{len(td_bags)}")
+        print("GRAPH:")
+        logging.info(f"{edges__from_leaf_to_root}")
+        logging.info(f"Root node is: {root_node}")
+        print_edge_map_with_cumulative_variables(edges__from_leaf_to_root,td_leaves,False)
+        print_edge_map_with_cumulative_variables(edges__from_leaf_to_root,td_leaves,True)
+        print("CLAUSES:")
+        print_clauses_for_each_bag()
+        print("REPORTING:")
+        print(f"1-{num_vars}")
+    else:
+        print("DAG-FILE")
+        print(f"NODES:{len(td_bags)+1}")
+        print("GRAPH:")
+        logging.info(f"{edges__from_root_to_leaves}")
+        logging.info(f"Root node is: {root_node}")
+        print_edge_map_with_cumulative_variables(edges__from_root_to_leaves,[root_node],True)
+        print("CLAUSES:")
+        print_clauses_for_each_bag()
+        print(f"{len(td_bags)}:0-{len(cnf_clauses)-1}")
+        print("REPORTING:")
+        print(f"1-{num_vars}")
+        
     
 if __name__ == "__main__":
     main()
