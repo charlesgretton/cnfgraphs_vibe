@@ -79,6 +79,7 @@ python3 remove_empty_bags.py x.cnf x.1c.td x.1c.nempt.td
 
 A bag does not necessarily have to have constraints associated with it, and in this case we need a vacuous additional clause for Dagster to associate with such bags. 
 
+
 ```bash
 python3 add_one_var_to_cnf.py x.cnf x.plus1.cnf
 ```
@@ -87,6 +88,12 @@ python3 add_one_var_to_cnf.py x.cnf x.plus1.cnf
 
 ```bash
 python3 td2dag.py x.cnf x.1c.nempt.td   2> /dev/null > x.dag
+```
+
+## DAG from a Leaves to the Root
+
+```bash
+python3 td2dag.py -toroot x.cnf x.1c.nempt.td   2> /dev/null > x.dag
 ```
 
 ## Run Dagster
