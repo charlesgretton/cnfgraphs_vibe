@@ -202,11 +202,192 @@ def print_edge_map_with_source_clause_variables(input_edge_map, map_name="Edge M
         # Format the set of variables into a sorted, comma-separated string
         vars_str = ",".join(map(str, sorted(list(variables_in_source_clauses))))
         
-        print(f"{source_bag_id-1}->{destination_bag_id-1}:{vars_str}")
+        print(f"{source_bag_id - 1}->{destination_bag_id - 1}:{vars_str}")
 
 
+def format_integer_set_to_ranges(data_dict):
+    """
+    Takes a dictionary where values are sets of integers.
+    For each set, it formats the integers into a comma-separated string
+    with continuous ranges represented as "start-end".
 
-def print_edge_map_with_cumulative_variables(input_edge_map, map_name="Edge Map with Cumulative Variables", roots=None):
+    Args:
+        data_dict (dict): A dictionary where keys are arbitrary and
+                          values are sets of integers.
+
+    Returns:
+        dict: A new dictionary with the same keys, where values are
+              the formatted strings.
+    """
+    formatted_dict = {}
+    for key, int_set in data_dict.items():
+        if not int_set:  # Handle empty sets
+            formatted_dict[key] = ""
+            continue
+
+        # Sort the numbers to easily find ranges
+        numbers = sorted(list(int_set))
+        
+        ranges = []
+        if not numbers: # Should be caught by `if not int_set` but good for robustness
+            formatted_dict[key] = ""
+            continue
+
+        start_of_range = numbers[0]
+        
+        for i in range(1, len(numbers)):
+            # If the current number is not consecutive to the previous one
+            if numbers[i] != numbers[i-1] + 1:
+                # Finalize the previous range
+                if start_of_range == numbers[i-1]:
+                    ranges.append(str(start_of_range))
+                else:
+                    ranges.append(f"{start_of_range}-{numbers[i-1]}")
+                # Start a new range
+                start_of_range = numbers[i]
+        
+        # Add the last range
+        if start_of_range == numbers[-1]:
+            ranges.append(str(start_of_range))
+        else:
+            ranges.append(f"{start_of_range}-{numbers[-1]}")
+            
+        formatted_dict[key] = ",".join(ranges)
+        
+    return formatted_dict
+
+def format_aggregated_integers_to_ranges(data_dict):
+    """
+    Aggregates all integers from all sets in the input dictionary into a single set,
+    then formats this aggregated set into a comma-separated string
+    with continuous ranges represented as "start-end".
+
+    Args:
+        data_dict (dict): A dictionary where keys are arbitrary and
+                          values are sets of integers.
+
+    Returns:
+        str: A comma-separated string representing the aggregated integers
+             with ranges, or an empty string if no integers are found.
+    """
+    aggregated_set = set()
+
+    # 1. Aggregate all integers into a single set
+    for key, int_set in data_dict.items():
+        if int_set: # Ensure the set is not None or empty before updating
+            aggregated_set.update(int_set)
+
+    if not aggregated_set:  # Handle case where no integers were found at all
+        return ""
+
+    # 2. Format the aggregated set into ranges (same logic as before)
+    numbers = sorted(list(aggregated_set))
+    
+    ranges = []
+    # This check is technically redundant if `if not aggregated_set` above is hit,
+    # but good for standalone use of this part of the logic.
+    if not numbers: 
+        return ""
+
+    start_of_range = numbers[0]
+    
+    for i in range(1, len(numbers)):
+        if numbers[i] != numbers[i-1] + 1:
+            if start_of_range == numbers[i-1]:
+                ranges.append(str(start_of_range))
+            else:
+                ranges.append(f"{start_of_range}-{numbers[i-1]}")
+            start_of_range = numbers[i]
+    
+    # Add the last range
+    if start_of_range == numbers[-1]:
+        ranges.append(str(start_of_range))
+    else:
+        ranges.append(f"{start_of_range}-{numbers[-1]}")
+            
+    return ",".join(ranges)
+
+variables_cumulation = {} # This will store bag_id -> set of cumulative variables
+
+def print_edge_map_with_cumulative_variables(input_edge_map, current_nodes):
+    """
+    Recursively processes nodes in a tree-like structure (defined by input_edge_map)
+    to compute cumulative variables for each node.
+
+    Args:
+        input_edge_map: A dictionary representing directed edges, e.g., {parent: child}.
+                        If it's {child: parent}, the logic for "destinations" needs adjustment.
+                        Assuming for now it's {source_node: destination_node} or
+                        if it's a parent-to-children map {parent: [child1, child2]}, the
+                        looping needs to be adjusted.
+                        Based on your usage `destination = input_edge_map[n]`, it seems
+                        like a map from a node to its single successor/child in a path,
+                        or from a child to its parent if `roots` are leaves.
+        current_nodes: A collection (e.g., list or set) of nodes to process in this iteration.
+    """
+    global variables_cumulation
+    global bag_to_clause_indices # Needs to be accessible
+    global clauses_with_vars   # Needs to be accessible
+
+    if not current_nodes: # Base case for recursion
+        return
+
+    next_level_nodes = set()
+
+    for node_id in current_nodes:
+        # 1. Calculate variables directly associated with this node/bag
+        current_node_variables = set()
+        if node_id in bag_to_clause_indices: # Check if the node_id is a valid bag
+            logging.info(f"Processing {node_id}")
+            for clause_index in bag_to_clause_indices[node_id]:
+                if clause_index < len(clauses_with_vars): # Ensure clause_index is valid
+                    for literal in clauses_with_vars[clause_index]['vars']:
+                        
+                        current_node_variables.add(abs(literal)) # Use add for sets
+                else:
+                    logging.error(f"Clause index {clause_index} for bag {node_id} is out of bounds for clauses_with_vars.")
+        else:
+            logging.info(f"Bag ID {node_id} not found in bag_to_clause_indices.")
+
+
+        # 2. Initialize or update variables_cumulation for the current node
+        if node_id not in variables_cumulation:
+            variables_cumulation[node_id] = set()
+        
+        # Add the variables directly from this node's clauses
+        variables_cumulation[node_id].update(current_node_variables) # Use update to add multiple elements
+
+        # 3. Process children/successors
+        # This part heavily depends on the structure of input_edge_map
+        # Assuming input_edge_map[parent] = child or input_edge_map[node] = next_node_in_path
+        
+        if node_id in input_edge_map:
+            # Safely get destination(s)
+            destinations_for_node = input_edge_map[node_id]
+            if not isinstance(destinations_for_node, (list, set, tuple)):
+                destinations_for_node = [destinations_for_node] # Make it iterable
+
+            for dest_node_id in destinations_for_node:
+                logging.info(f"Successor is {dest_node_id}")
+                if dest_node_id not in variables_cumulation:
+                    variables_cumulation[dest_node_id] = set()
+
+                to_print=format_aggregated_integers_to_ranges(variables_cumulation)
+                    
+                print(f"{node_id-1}->{dest_node_id-1}:{to_print}")
+                    
+                # Crucially, the cumulative variables from the parent (node_id)
+                # are added to the child (dest_node_id)
+                variables_cumulation[dest_node_id].update(variables_cumulation[node_id])
+                next_level_nodes.add(dest_node_id)
+        
+
+
+    # Recursive call for the next level of nodes
+    if next_level_nodes:
+        print_edge_map_with_cumulative_variables(input_edge_map, list(next_level_nodes))
+
+def print_edge_map_with_cumulative_variables__OLD(input_edge_map, map_name="Edge Map with Cumulative Variables", roots=None):
     """
     Prints edges from an input_edge_map. For each edge A->B,
     the variables printed are the cumulative variables from A and all its
@@ -377,8 +558,11 @@ def print_clauses_for_each_bag():
         # The indices should already be sorted if you sorted them when populating bag_to_clause_indices.
         # If not, you could sort here: sorted(clause_indices_for_this_bag)
         clause_indices_str = ",".join(map(str, clause_indices_for_this_bag))
-        
-        print(f"{bag_id-1}:{clause_indices_str}")
+
+        if 0 == len(clause_indices_str):
+            print(f"{bag_id-1}:{len(clauses_with_vars)}")
+        else:
+            print(f"{bag_id-1}:{clause_indices_str}")
 
     if not sorted_bag_ids: # Second check if td_bags became empty after sorting (shouldn't happen)
         logging.info("No bag IDs found to process.")
@@ -396,7 +580,7 @@ def compute__root_paths_to_leaves():
     edges__from_root_to_leaves.clear()
     
     path_count = 0
-    logging.info(f"\nComputing paths from root {root_node} to leaves: {td_leaves}")
+    logging.info(f"Computing paths from root {root_node} to leaves: {td_leaves}")
 
     for leaf in td_leaves:
         if leaf == root_node and len(td_graph.nodes()) == 1: # Path from root to itself if it's the only node
@@ -411,7 +595,7 @@ def compute__root_paths_to_leaves():
             # Find the path from the root to the current leaf
             path = nx.shortest_path(td_graph, source=root_node, target=leaf)
             path_count += 1
-            # print(f"  Path from root {root_node} to leaf {leaf}: {path}") # For debugging
+            logging.info(f"  Path from root {root_node} to leaf {leaf}: {path}") # For debugging
 
             if len(path) > 1: # Path has at least one edge
                 for i in range(len(path) - 1):
@@ -421,13 +605,13 @@ def compute__root_paths_to_leaves():
                     current_destination = path[i+1]
                     
                     # If you want to store multiple children for a source:
-                    # if current_source not in edges__from_root_to_leaves:
-                    #     edges__from_root_to_leaves[current_source] = []
-                    # if current_destination not in edges__from_root_to_leaves[current_source]:
-                    #     edges__from_root_to_leaves[current_source].append(current_destination)
+                    if current_source not in edges__from_root_to_leaves:
+                        edges__from_root_to_leaves[current_source] = []
+                    if current_destination not in edges__from_root_to_leaves[current_source]:
+                        edges__from_root_to_leaves[current_source].append(current_destination)
                     
                     # If sticking to source:destination (overwrites if source has multiple children on different paths)
-                    edges__from_root_to_leaves[current_source] = current_destination
+                    ## edges__from_root_to_leaves[current_source] = current_destination
 
                     if len(path) - 1 == i+1:
                         edges__from_root_to_leaves[current_destination] = len(td_bags) + 1
@@ -599,6 +783,7 @@ def compute__bags_to_clauses():
 
 def main():
     global clauses
+    global root_node
     parser = argparse.ArgumentParser(
         description="Analyze a Tree Decomposition against a CNF file. "
                     "Associates CNF clauses with TD bags and prints paths from leaves to a root."
@@ -631,27 +816,29 @@ def main():
     compute__root_paths_to_leaves()
 
 
-    if args.toroot:        
-        print("DAG-FILE")
-        print(f"NODES:{len(td_bags)}")
-        print("GRAPH:")
-        #print_edge_map_with_source_clause_variables(edges__from_leaf_to_root)
-        print_edge_map_with_cumulative_variables(edges__from_leaf_to_root)
-        print("CLAUSES:")
-        print_clauses_for_each_bag()
-        print("REPORTING:")
-        print(f"1-{num_vars}")
-    else:
-        print("DAG-FILE")
-        print(f"NODES:{len(td_bags)+1}")
-        print("GRAPH:")
-        #print_edge_map_with_source_clause_variables(edges__from_root_to_leaves)
-        print_edge_map_with_cumulative_variables(edges__from_root_to_leaves)
-        print("CLAUSES:")
-        print_clauses_for_each_bag()
-        print(f"{len(td_bags)}:0-{len(cnf_clauses)-1}")
-        print("REPORTING:")
-        print(f"1-{num_vars}")
+    # if args.toroot:        
+    #     print("DAG-FILE")
+    #     print(f"NODES:{len(td_bags)}")
+    #     print("GRAPH:")
+    #     #print_edge_map_with_source_clause_variables(edges__from_leaf_to_root)
+    #     print_edge_map_with_cumulative_variables(edges__from_leaf_to_root,"thing",[12])
+    #     print("CLAUSES:")
+    #     print_clauses_for_each_bag()
+    #     print("REPORTING:")
+    #     print(f"1-{num_vars}")
+    # else:
+    print("DAG-FILE")
+    print(f"NODES:{len(td_bags)+1}")
+    print("GRAPH:")
+    #print_edge_map_with_source_clause_variables(edges__from_root_to_leaves)
+    logging.info(f"{edges__from_root_to_leaves}")
+    logging.info(f"Root node is: {root_node}")
+    print_edge_map_with_cumulative_variables(edges__from_root_to_leaves,[root_node])
+    print("CLAUSES:")
+    print_clauses_for_each_bag()
+    print(f"{len(td_bags)}:0-{len(cnf_clauses)-1}")
+    print("REPORTING:")
+    print(f"1-{num_vars}")
     
     
 if __name__ == "__main__":
