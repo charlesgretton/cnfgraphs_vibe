@@ -65,6 +65,12 @@ The tree decomposition may be a forest, with each subtree to be solved individua
 python3 biggest_component.py x.td x.1c.td
 ```
 
+## (Optional) Reduce Tree Size 
+
+```bash
+python3 merge_td.py x.td 100 -o x.merged.td
+```
+
 ## Remove Empty Bags
 
 A tree decomposition may produce bags that are empty. Here, we have a script to remove those. 
@@ -93,7 +99,7 @@ python3 td2dag.py x.cnf x.1c.nempt.td   2> /dev/null > x.dag
 ## DAG from a Leaves to the Root
 
 ```bash
-python3 td2dag.py -toroot x.cnf x.1c.nempt.td   2> /dev/null > x.dag
+python3 td2dag.py --toroot x.cnf x.1c.nempt.td   2> /dev/null > x.dag
 ```
 
 ## Run Dagster
