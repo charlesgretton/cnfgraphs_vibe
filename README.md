@@ -7,13 +7,13 @@ Playing with primal graphs via vibe coding
 I generate a CNF using CBMC, for example:
 
 ```bash
-cbmc target.c --dimacs --outfile target.cnf --type primal
+cbmc ./examples/C/ex1.c --dimacs --outfile x.cnf
 ```
 
 ## Turn CNF into Constraint Graph
 
 ```bash
-python3 cnf_to_graph.py ./target.cnf ./target.gr
+python3 cnf_to_graph.py ./x.cnf ./x.gr  --type primal
 ```
 
 ## Use HTD to Generate a Tree Decomposition
@@ -32,13 +32,13 @@ make
 
 ```bash
 cd ./bin/
-./htd_main < target.gr > target.td
+htd_main --triangulation-minimization  --preprocessing full --opt width --strategy min-degree < x.gr > x.td
 ```
 
 ## Verify Decomposition
 
 ```bash
-python3 verify_td.py target.gr target.td
+python3 verify_td.py x.gr x.td
 ```
 
 ## Visualise Decomposition
@@ -48,29 +48,66 @@ python3 verify_td.py target.gr target.td
 *Warning*, will create matplotlib widget.
 
 ```bash
-python3 visualise_bags.py target.td -o target.svg
+python3 visualise_bags.py x.td -o x.svg
 ```
 
 ### Without Bags
 
 ```bash
-python3 visualise_td.py target.td -o target.svg
+python3 visualise_td.py x.td -o x.svg
+```
+
+## Get One Subproblem
+
+The tree decomposition may be a forest, with each subtree to be solved individually. Here, I get the biggest subtree. 
+
+```bash
+python3 biggest_component.py x.td x.1c.td
+```
+
+## (Optional) Reduce Tree Size 
+
+```bash
+python3 merge_td.py x.td 100 -o x.merged.td
+```
+
+## Remove Empty Bags
+
+A tree decomposition may produce bags that are empty. Here, we have a script to remove those. 
+
+```bash
+python3 remove_empty_bags.py x.cnf x.1c.td x.1c.nempt.td
 ```
 
 # DAG input for Dagster
 
-The following is not yet robust to tree decompositions where nodes can be empty and vacuous. 
+## Auxiliary Clause
+
+A bag does not necessarily have to have constraints associated with it, and in this case we need a vacuous additional clause for Dagster to associate with such bags. 
+
+
+```bash
+python3 add_one_var_to_cnf.py x.cnf x.plus1.cnf
+```
 
 ## DAG from a Root to the Leaves
 
 ```bash
-python3 td2dag.py chain1.cnf chain1.td   2> /dev/null
+python3 td2dag.py x.cnf x.1c.nempt.td   2> /dev/null > x.dag
 ```
 
-## DAG from the Leaves to a Root
+## DAG from a Leaves to the Root
 
 ```bash
-python3 td2dag.py --toroot ../chain1.cnf ../chain1.td   2> /dev/null
+python3 td2dag.py --toroot x.cnf x.1c.nempt.td   2> /dev/null > x.dag
+```
+
+## Run Dagster
+
+On a small host, you could test with the following invocation.
+
+```bash
+mpirun --oversubscribe -n 100 ./dagster -m 0 -b 0 -e 0  x.dag x.plus1.cnf
 ```
 
 # Resources
